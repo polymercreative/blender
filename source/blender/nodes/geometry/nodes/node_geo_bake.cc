@@ -559,7 +559,7 @@ static const bNodeSocket *node_internally_linked_input(const bNodeTree & /*tree*
 static void node_blend_write(const bNodeTree & /*tree*/, const bNode &node, BlendWriter &writer)
 {
   const NodeGeometryBake &storage = node_storage(node);
-  writer.write_string(storage.modifier_panel_button_name);
+  BLO_write_string(&writer, storage.modifier_panel_button_name);
   socket_items::blend_write<BakeItemsAccessor>(&writer, node);
 }
 
