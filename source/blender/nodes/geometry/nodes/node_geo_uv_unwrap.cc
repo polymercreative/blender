@@ -43,6 +43,16 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Faces to participate in the unwrap operation");
   b.add_input<decl::Bool>("Seam").hide_value().supports_field().description(
       "Edges to mark where the mesh is \"cut\" for the purposes of unwrapping");
+  b.add_input<decl::Bool>("Pin")
+      .default_value(false)
+      .hide_value()
+      .supports_field()
+      .description("Vertices to pin in place during unwrapping");
+  b.add_input<decl::Vector>("UV")
+      .hide_value()
+      .supports_field()
+      .description(
+          "Existing UV coordinates to use as starting point for unwrap and pin positions");
   b.add_input<decl::Float>("Margin").default_value(0.001f).min(0.0f).max(1.0f).description(
       "Space between islands");
   b.add_input<decl::Bool>("Fill Holes")
@@ -72,6 +82,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                            const Field<bool> selection_field,
                                            const Field<bool> seam_field,
+                                           const Field<bool> pin_field,
+                                           const Field<float3> uv_field,
                                            const bool fill_holes,
                                            const float margin,
                                            const GeometryNodeUVUnwrapMethod method,
@@ -99,7 +111,20 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
   edge_evaluator.evaluate();
   const IndexMask seam = edge_evaluator.get_evaluated_as_mask(0);
 
+  const bke::MeshFieldContext vert_context{mesh, AttrDomain::Point};
+  FieldEvaluator vert_evaluator{vert_context, positions.size()};
+  vert_evaluator.add(pin_field);
+  vert_evaluator.evaluate();
+  const VArray<bool> pin_varray = vert_evaluator.get_evaluated<bool>(0);
+
+  const bke::MeshFieldContext corner_context{mesh, AttrDomain::Corner};
+  FieldEvaluator uv_evaluator{corner_context, corner_verts.size()};
+  uv_evaluator.add(uv_field);
+  uv_evaluator.evaluate();
+  const VArray<float3> existing_uv_varray = uv_evaluator.get_evaluated<float3>(0);
+
   Array<float3> uv(corner_verts.size(), float3(0));
+  existing_uv_varray.materialize(uv.as_mutable_span());
 
   geometry::ParamHandle *handle = new geometry::ParamHandle();
   selection.foreach_index([&](const int face_index) {
@@ -115,7 +140,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
       mp_vkeys[i] = vert;
       mp_co[i] = positions[vert];
       mp_uv[i] = uv[corner];
-      mp_pin[i] = false;
+      mp_pin[i] = pin_varray[vert];
       mp_select[i] = false;
     }
     geometry::uv_parametrizer_face_add(handle,
@@ -168,6 +193,8 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
  private:
   const Field<bool> selection_;
   const Field<bool> seam_;
+  const Field<bool> pin_;
+  const Field<float3> uv_;
   const bool fill_holes_;
   const float margin_;
   const GeometryNodeUVUnwrapMethod method_;
@@ -177,6 +204,8 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
  public:
   UnwrapFieldInput(const Field<bool> selection,
                    const Field<bool> seam,
+                   const Field<bool> pin,
+                   const Field<float3> uv,
                    const bool fill_holes,
                    const float margin,
                    const GeometryNodeUVUnwrapMethod method,
@@ -185,6 +214,8 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
       : bke::MeshFieldInput(CPPType::get<float3>(), "UV Unwrap Field"),
         selection_(selection),
         seam_(seam),
+        pin_(pin),
+        uv_(uv),
         fill_holes_(fill_holes),
         margin_(margin),
         method_(method),
@@ -198,14 +229,25 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
                                  const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    return construct_uv_gvarray(
-        mesh, selection_, seam_, fill_holes_, margin_, method_, iterations_, no_flip_, domain);
+    return construct_uv_gvarray(mesh,
+                                selection_,
+                                seam_,
+                                pin_,
+                                uv_,
+                                fill_holes_,
+                                margin_,
+                                method_,
+                                iterations_,
+                                no_flip_,
+                                domain);
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
   {
     selection_.node().for_each_field_input_recursive(fn);
     seam_.node().for_each_field_input_recursive(fn);
+    pin_.node().for_each_field_input_recursive(fn);
+    uv_.node().for_each_field_input_recursive(fn);
   }
 
   std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
@@ -219,6 +261,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const auto method = params.get_input<GeometryNodeUVUnwrapMethod>("Method");
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const Field<bool> seam_field = params.extract_input<Field<bool>>("Seam");
+  const Field<bool> pin_field = params.extract_input<Field<bool>>("Pin");
+  const Field<float3> uv_field = params.extract_input<Field<float3>>("UV");
   const bool fill_holes = params.extract_input<bool>("Fill Holes");
   const float margin = params.extract_input<float>("Margin");
   int iterations = 0;
@@ -229,8 +273,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   params.set_output(
       "UV",
-      Field<float3>(std::make_shared<UnwrapFieldInput>(
-          selection_field, seam_field, fill_holes, margin, method, iterations, no_flip)));
+      Field<float3>(std::make_shared<UnwrapFieldInput>(selection_field,
+                                                       seam_field,
+                                                       pin_field,
+                                                       uv_field,
+                                                       fill_holes,
+                                                       margin,
+                                                       method,
+                                                       iterations,
+                                                       no_flip)));
 }
 
 static void node_register()

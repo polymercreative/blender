@@ -3864,6 +3864,43 @@ struct NodeGeometryBake {
   char _pad[4] = {};
 };
 
+struct NodeGeometryDecimate {
+  DNA_DEFINE_CXX_METHODS(NodeGeometryDecimate)
+
+  /** #geometry::DecimateMode. */
+  int8_t mode = 0;
+  /** Symmetry axis (0=X, 1=Y, 2=Z). */
+  int8_t symmetry_axis = 0;
+  /** #BMO_Delimit flags for planar mode. */
+  int8_t delimit = 0;
+  char _pad[1] = {};
+};
+
+struct NodeGeometryShrinkwrap {
+  DNA_DEFINE_CXX_METHODS(NodeGeometryShrinkwrap)
+
+  /** #eMODShrinkwrapType (NEAREST_SURFACE, PROJECT, etc.). */
+  int8_t wrap_method = 0;
+  /** #eMODShrinkwrapMode (ON_SURFACE, INSIDE, OUTSIDE, etc.). */
+  int8_t wrap_mode = 0;
+  /** Project axis flags (#eMODShrinkwrapProjectionAxis). */
+  int8_t proj_axis = 0;
+  /** Face cull mode (0=off, 1=front, 2=back). */
+  int8_t cull_face = 0;
+};
+
+struct NodeGeometryBevel {
+  DNA_DEFINE_CXX_METHODS(NodeGeometryBevel)
+
+  /** 0=Vertices, 1=Edges. */
+  int8_t mode = 0;
+  /** MOD_BEVEL_AMT_* offset type (0-4). */
+  int8_t offset_type = 0;
+  /** 0=Standard, 1=Collision detection. */
+  int8_t clamp_method = 0;
+  char _pad[1] = {};
+};
+
 struct NodeCombineBundleItem {
   char *name = nullptr;
   int identifier = 0;
