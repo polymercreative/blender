@@ -7973,6 +7973,19 @@ static void rna_def_geo_bake(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "show_in_modifier_panel", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "show_in_modifier_panel", 1);
+  RNA_def_property_ui_text(prop,
+                           "Show in Modifier Panel",
+                           "Show a bake button for this node in the modifier properties panel");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "modifier_panel_button_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "modifier_panel_button_name");
+  RNA_def_property_ui_text(
+      prop, "Button Name", "Custom name for the bake button in the modifier panel");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void rna_def_combine_bundle_item(BlenderRNA *brna)
