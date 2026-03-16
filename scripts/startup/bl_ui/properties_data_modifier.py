@@ -168,6 +168,9 @@ class OBJECT_MT_modifier_add_generate(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'MULTIRES')
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE'}:
             self.operator_modifier_add(layout, 'REMESH')
+        if ob_type == 'MESH':
+            self.operator_modifier_add(layout, 'FIX_POLES')
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE'}:
             self.operator_modifier_add_asset(layout, n_('Scatter on Surface'), icon='MOD_SCATTER_ON_SURFACE')
             self.operator_modifier_add(layout, 'SCREW')
         if ob_type == 'MESH':

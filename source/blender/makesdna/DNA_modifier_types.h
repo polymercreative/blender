@@ -130,6 +130,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilBuild = 84,
   eModifierType_GreasePencilSimplify = 85,
   eModifierType_GreasePencilTexture = 86,
+  /* Custom modifiers - start at 100 to avoid conflicts with upstream */
+  eModifierType_FixPoles = 100,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3565,3 +3567,9 @@ typedef enum GreasePencilTextureModifierMode {
   MOD_GREASE_PENCIL_TEXTURE_FILL = 1,
   MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL = 2,
 } GreasePencilTextureModifierMode;
+
+/* Fix Poles Modifier - custom modifier for fixing 3-edge poles */
+typedef struct FixPolesModifierData {
+  ModifierData modifier;
+  char _pad[8];
+} FixPolesModifierData;

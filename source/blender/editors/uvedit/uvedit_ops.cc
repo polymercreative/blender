@@ -122,10 +122,106 @@ bool ED_object_get_active_image(Object *ob,
                                 const bNode **r_node,
                                 const bNodeTree **r_ntree)
 {
+  printf("[ED_object_get_active_image DEBUG] ob=%p (%s), mat_nr=%d, is_evaluated=%d\n",
+         (void*)ob, ob->id.name + 2, mat_nr, DEG_is_evaluated(ob));
+
   Material *ma = DEG_is_evaluated(ob) ? BKE_object_material_get_eval(ob, mat_nr) :
                                         BKE_object_material_get(ob, mat_nr);
+  printf("[ED_object_get_active_image DEBUG] Material=%p\n", (void*)ma);
+
   bNodeTree *ntree = ma ? ma->nodetree : nullptr;
+  printf("[ED_object_get_active_image DEBUG] NodeTree=%p\n", (void*)ntree);
+
   bNode *node = (ntree) ? bke::node_get_active_texture(*ntree) : nullptr;
+  printf("[ED_object_get_active_image DEBUG] Active node=%p\n", (void*)node);
+
+  if (node) {
+    printf("[ED_object_get_active_image DEBUG] Node type=%d, is_image_texture=%d\n",
+           node->type_legacy, is_image_texture_node(node));
+  }
+
+  if (node && is_image_texture_node(node)) {
+    if (r_ima) {
+      *r_ima = (Image *)node->id;
+    }
+    if (r_iuser) {
+      if (node->type_legacy == SH_NODE_TEX_IMAGE) {
+        *r_iuser = &((NodeTexImage *)node->storage)->iuser;
+      }
+      else if (node->type_legacy == SH_NODE_TEX_ENVIRONMENT) {
+        *r_iuser = &((NodeTexEnvironment *)node->storage)->iuser;
+      }
+      else {
+        *r_iuser = nullptr;
+      }
+    }
+    if (r_node) {
+      *r_node = node;
+    }
+    if (r_ntree) {
+      *r_ntree = ntree;
+    }
+    return true;
+  }
+
+  if (r_ima) {
+    *r_ima = nullptr;
+  }
+  if (r_iuser) {
+    *r_iuser = nullptr;
+  }
+  if (r_node) {
+    *r_node = node;
+  }
+  if (r_ntree) {
+    *r_ntree = ntree;
+  }
+
+  return false;
+}
+
+bool ED_object_get_active_image(Object *ob,
+                                int mat_nr,
+                                const Mesh *mesh,
+                                Image **r_ima,
+                                ImageUser **r_iuser,
+                                const bNode **r_node,
+                                const bNodeTree **r_ntree)
+{
+  printf("[ED_object_get_active_image DEBUG] WITH MESH: ob=%p (%s), mat_nr=%d, mesh=%p\n",
+         (void*)ob, ob->id.name + 2, mat_nr, (void*)mesh);
+
+  /* Use the provided evaluated mesh for material lookup */
+  Material *ma = nullptr;
+  if (mesh && DEG_is_evaluated(ob)) {
+    printf("[ED_object_get_active_image DEBUG] Mesh totcol=%d\n", mesh->totcol);
+    if (mesh->mat && mesh->totcol > 0) {
+      for (int i = 0; i < mesh->totcol; i++) {
+        printf("[ED_object_get_active_image DEBUG]   Mesh mat[%d] = %p (%s)\n",
+               i, (void*)mesh->mat[i], mesh->mat[i] ? mesh->mat[i]->id.name + 2 : "NULL");
+      }
+    }
+    printf("[ED_object_get_active_image DEBUG] Using BKE_object_material_get_eval with explicit mesh\n");
+    ma = const_cast<Material *>(BKE_object_material_get_eval(*ob, mesh->id, mat_nr));
+  }
+  else {
+    printf("[ED_object_get_active_image DEBUG] Falling back to standard material get\n");
+    ma = DEG_is_evaluated(ob) ? BKE_object_material_get_eval(ob, mat_nr) :
+                                BKE_object_material_get(ob, mat_nr);
+  }
+
+  printf("[ED_object_get_active_image DEBUG] Material=%p\n", (void*)ma);
+
+  bNodeTree *ntree = ma ? ma->nodetree : nullptr;
+  printf("[ED_object_get_active_image DEBUG] NodeTree=%p\n", (void*)ntree);
+
+  bNode *node = (ntree) ? bke::node_get_active_texture(*ntree) : nullptr;
+  printf("[ED_object_get_active_image DEBUG] Active node=%p\n", (void*)node);
+
+  if (node) {
+    printf("[ED_object_get_active_image DEBUG] Node type=%d, is_image_texture=%d\n",
+           node->type_legacy, is_image_texture_node(node));
+  }
 
   if (node && is_image_texture_node(node)) {
     if (r_ima) {

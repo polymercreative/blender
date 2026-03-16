@@ -29,11 +29,15 @@ set(INC_SYS
 
 set(SRC
   nodes/node_geo_accumulate_field.cc
+  nodes/node_geo_adaptive_remesh.cc
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
+  nodes/node_geo_dissolve_flat_vertices.cc
   nodes/node_geo_attribute_statistic.cc
   nodes/node_geo_bake.cc
+  nodes/node_geo_bevel.cc
   nodes/node_geo_blur_attribute.cc
+  nodes/node_geo_hard_bevel.cc
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
   nodes/node_geo_camera_info.cc
@@ -69,6 +73,7 @@ set(SRC
   nodes/node_geo_curve_trim.cc
   nodes/node_geo_curves_to_grease_pencil.cc
   nodes/node_geo_deform_curves_on_surface.cc
+  nodes/node_geo_decimate.cc
   nodes/node_geo_delete_geometry.cc
   nodes/node_geo_distribute_points_in_grid.cc
   nodes/node_geo_distribute_points_in_volume.cc
@@ -151,6 +156,7 @@ set(SRC
   nodes/node_geo_input_spline_resolution.cc
   nodes/node_geo_input_tangent.cc
   nodes/node_geo_input_voxel_index.cc
+  nodes/node_geo_inset.cc
   nodes/node_geo_instance_on_points.cc
   nodes/node_geo_instances_to_points.cc
   nodes/node_geo_interpolate_curves.cc
@@ -162,9 +168,13 @@ set(SRC
   nodes/node_geo_list_length.cc
   nodes/node_geo_material_replace.cc
   nodes/node_geo_material_selection.cc
+  nodes/node_geo_select_bad_triangles.cc
   nodes/node_geo_menu_switch.cc
   nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_merge_layers.cc
+  nodes/node_geo_merge_small_islands.cc
+  nodes/node_geo_merge_similar_islands.cc
+  nodes/node_geo_fix_poles.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
   nodes/node_geo_mesh_primitive_cone.cc
@@ -241,6 +251,8 @@ set(SRC
   nodes/node_geo_set_shade_smooth.cc
   nodes/node_geo_set_spline_cyclic.cc
   nodes/node_geo_set_spline_resolution.cc
+  nodes/node_geo_shrinkwrap.cc
+  nodes/node_geo_skeleton_inset.cc
   nodes/node_geo_simulation.cc
   nodes/node_geo_sort_elements.cc
   nodes/node_geo_split_to_instances.cc

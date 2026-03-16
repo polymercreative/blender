@@ -24,16 +24,25 @@ set(SRC
   intern/join_geometries.cc
   intern/merge_curves.cc
   intern/merge_layers.cc
+  intern/mesh_adaptive_remesh.cc
+  intern/mesh_bevel.cc
   intern/mesh_boolean.cc
+  intern/mesh_dissolve_flat_vertices.cc
   intern/mesh_boolean_manifold.cc
   intern/mesh_copy_selection.cc
+  intern/mesh_decimate.cc
+  intern/mesh_fix_poles.cc
   intern/mesh_merge_by_distance.cc
+  intern/mesh_merge_small_islands.cc
+  intern/mesh_select_bad_triangles.cc
+  intern/mesh_merge_similar_islands.cc
   intern/mesh_primitive_cuboid.cc
   intern/mesh_primitive_cylinder_cone.cc
   intern/mesh_primitive_grid.cc
   intern/mesh_primitive_line.cc
   intern/mesh_primitive_uv_sphere.cc
   intern/mesh_selection.cc
+  intern/mesh_skeleton_inset.cc
   intern/mesh_split_edges.cc
   intern/mesh_to_curve_convert.cc
   intern/mesh_to_volume.cc
@@ -69,15 +78,24 @@ set(SRC
   GEO_join_geometries.hh
   GEO_merge_curves.hh
   GEO_merge_layers.hh
+  GEO_mesh_adaptive_remesh.hh
+  GEO_mesh_bevel.hh
   GEO_mesh_boolean.hh
   GEO_mesh_copy_selection.hh
+  GEO_mesh_dissolve_flat_vertices.hh
+  GEO_mesh_decimate.hh
+  GEO_mesh_fix_poles.hh
   GEO_mesh_merge_by_distance.hh
+  GEO_mesh_merge_small_islands.hh
+  GEO_mesh_merge_similar_islands.hh
+  GEO_mesh_select_bad_triangles.hh
   GEO_mesh_primitive_cuboid.hh
   GEO_mesh_primitive_cylinder_cone.hh
   GEO_mesh_primitive_grid.hh
   GEO_mesh_primitive_line.hh
   GEO_mesh_primitive_uv_sphere.hh
   GEO_mesh_selection.hh
+  GEO_mesh_skeleton_inset.hh
   GEO_mesh_split_edges.hh
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh

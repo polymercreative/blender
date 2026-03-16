@@ -184,6 +184,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_REMESH,
      "Remesh",
      "Generate new mesh topology based on the current shape"},
+    {eModifierType_FixPoles,
+     "FIX_POLES",
+     ICON_MOD_REMESH,
+     "Fix Poles",
+     "Fix 3-edge poles in mesh topology by collapsing them"},
     {eModifierType_Screw,
      "SCREW",
      ICON_MOD_SCREW,
@@ -11189,6 +11194,18 @@ static void rna_def_modifier_grease_pencil_texture(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_fix_poles(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "FixPolesModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Fix Poles Modifier", "Fix 3-edge poles in mesh topology");
+  RNA_def_struct_sdna(srna, "FixPolesModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_REMESH);
+
+  /* No properties - this is a simple mesh operation */
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -11393,6 +11410,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_shrinkwrap(brna);
   rna_def_modifier_grease_pencil_build(brna);
   rna_def_modifier_grease_pencil_texture(brna);
+  rna_def_modifier_fix_poles(brna);
 }
 
 #endif

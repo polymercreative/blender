@@ -1088,4 +1088,9 @@
     .mode = 0, \
   }
 
+#define _DNA_DEFAULT_FixPolesModifierData \
+  { \
+    ._pad = {0}, \
+  }
+
 /* clang-format off */

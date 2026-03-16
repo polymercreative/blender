@@ -25,11 +25,19 @@ static EnumPropertyItem method_items[] = {
      N_("Conformal"),
      N_("Uses LSCM (Least Squares Conformal Mapping). This usually gives a less accurate UV "
         "mapping than Angle Based, but works better for simpler objects")},
+    {GEO_NODE_UV_UNWRAP_METHOD_MINIMUM_STRETCH,
+     "MINIMUM_STRETCH",
+     0,
+     N_("Minimum Stretch"),
+     N_("Uses SLIM algorithm to minimize stretch and distortion. Best for organic shapes and "
+        "VDM workflows")},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  const bNode *node = b.node_or_null();
+
   b.add_input<decl::Bool>("Selection")
       .default_value(true)
       .hide_value()
@@ -37,6 +45,17 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Faces to participate in the unwrap operation");
   b.add_input<decl::Bool>("Seam").hide_value().supports_field().description(
       "Edges to mark where the mesh is \"cut\" for the purposes of unwrapping");
+  b.add_input<decl::Bool>("Pin")
+      .default_value(false)
+      .hide_value()
+      .supports_field()
+      .description("Vertices to pin in place during unwrapping");
+  b.add_input<decl::Vector>("UV")
+      .hide_value()
+      .supports_field()
+      .description(
+          "Existing UV coordinates to use as starting point for unwrap and pin positions. Leave "
+          "unconnected to start from scratch");
   b.add_input<decl::Float>("Margin").default_value(0.001f).min(0.0f).max(1.0f).description(
       "Space between islands");
   b.add_input<decl::Bool>("Fill Holes")
@@ -45,6 +64,18 @@ static void node_declare(NodeDeclarationBuilder &b)
           "Virtually fill holes in mesh before unwrapping, to better avoid overlaps "
           "and preserve symmetry");
   b.add_input<decl::Menu>("Method").static_items(method_items).optional_label();
+
+  if (node != nullptr) {
+    const NodeGeometryUVUnwrap &storage = node_storage(*node);
+    if (storage.method == GEO_NODE_UV_UNWRAP_METHOD_MINIMUM_STRETCH) {
+      b.add_input<decl::Int>("Iterations")
+          .default_value(5)
+          .min(0)
+          .max(1000)
+          .description("Number of SLIM iterations for stretch minimization");
+    }
+  }
+
   b.add_output<decl::Vector>("UV").field_source_reference_all().description(
       "UV coordinates between 0 and 1 for each face corner in the selected faces");
 }
@@ -58,9 +89,12 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                            const Field<bool> selection_field,
                                            const Field<bool> seam_field,
+                                           const Field<bool> pin_field,
+                                           const Field<float3> uv_field,
                                            const bool fill_holes,
                                            const float margin,
                                            const GeometryNodeUVUnwrapMethod method,
+                                           const int iterations,
                                            const AttrDomain domain)
 {
   const Span<float3> positions = mesh.vert_positions();
@@ -83,7 +117,23 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
   edge_evaluator.evaluate();
   const IndexMask seam = edge_evaluator.get_evaluated_as_mask(0);
 
-  Array<float3> uv(corner_verts.size(), float3(0));
+  /* Evaluate pin field on vertices. */
+  const bke::MeshFieldContext vert_context{mesh, AttrDomain::Point};
+  FieldEvaluator vert_evaluator{vert_context, positions.size()};
+  vert_evaluator.add(pin_field);
+  vert_evaluator.evaluate();
+  const VArray<bool> pin_varray = vert_evaluator.get_evaluated<bool>(0);
+
+  /* Evaluate existing UV field on corners - this provides starting positions for pins. */
+  const bke::MeshFieldContext corner_context{mesh, AttrDomain::Corner};
+  FieldEvaluator uv_evaluator{corner_context, corner_verts.size()};
+  uv_evaluator.add(uv_field);
+  uv_evaluator.evaluate();
+  const VArray<float3> existing_uv_varray = uv_evaluator.get_evaluated<float3>(0);
+
+  /* Initialize UV array from existing UVs or zeros if none provided. */
+  Array<float3> uv(corner_verts.size());
+  existing_uv_varray.materialize(uv.as_mutable_span());
 
   geometry::ParamHandle *handle = new geometry::ParamHandle();
   selection.foreach_index([&](const int face_index) {
@@ -99,7 +149,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
       mp_vkeys[i] = vert;
       mp_co[i] = positions[vert];
       mp_uv[i] = uv[corner];
-      mp_pin[i] = false;
+      mp_pin[i] = pin_varray[vert];  /* Use actual pin values from field. */
       mp_select[i] = false;
     }
     geometry::uv_parametrizer_face_add(handle,
@@ -126,10 +176,23 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
    * warning if we fail to solve an island. */
   geometry::uv_parametrizer_construct_end(handle, fill_holes, false, nullptr);
 
+  /* Always start with LSCM to create initial UV layout. */
   geometry::uv_parametrizer_lscm_begin(
       handle, false, method == GEO_NODE_UV_UNWRAP_METHOD_ANGLE_BASED);
   geometry::uv_parametrizer_lscm_solve(handle, nullptr, nullptr);
   geometry::uv_parametrizer_lscm_end(handle);
+
+  /* For Minimum Stretch, refine the LSCM result with SLIM iterations. */
+  if (method == GEO_NODE_UV_UNWRAP_METHOD_MINIMUM_STRETCH) {
+    geometry::ParamSlimOptions slim_options;
+    slim_options.iterations = iterations;
+    slim_options.no_flip = true;
+    slim_options.skip_init = true;  /* Skip init - we already have UVs from LSCM. */
+    slim_options.weight_influence = 0.0f;
+
+    geometry::uv_parametrizer_slim_solve(handle, &slim_options, nullptr, nullptr);
+  }
+
   geometry::uv_parametrizer_average(handle, true, false, false);
   geometry::uv_parametrizer_pack(handle, params);
   geometry::uv_parametrizer_flush(handle);
@@ -143,22 +206,31 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
  private:
   const Field<bool> selection_;
   const Field<bool> seam_;
+  const Field<bool> pin_;
+  const Field<float3> uv_;
   const bool fill_holes_;
   const float margin_;
   const GeometryNodeUVUnwrapMethod method_;
+  const int iterations_;
 
  public:
   UnwrapFieldInput(const Field<bool> selection,
                    const Field<bool> seam,
+                   const Field<bool> pin,
+                   const Field<float3> uv,
                    const bool fill_holes,
                    const float margin,
-                   const GeometryNodeUVUnwrapMethod method)
+                   const GeometryNodeUVUnwrapMethod method,
+                   const int iterations)
       : bke::MeshFieldInput(CPPType::get<float3>(), "UV Unwrap Field"),
         selection_(selection),
         seam_(seam),
+        pin_(pin),
+        uv_(uv),
         fill_holes_(fill_holes),
         margin_(margin),
-        method_(method)
+        method_(method),
+        iterations_(iterations)
   {
     category_ = Category::Generated;
   }
@@ -167,13 +239,16 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
                                  const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    return construct_uv_gvarray(mesh, selection_, seam_, fill_holes_, margin_, method_, domain);
+    return construct_uv_gvarray(
+        mesh, selection_, seam_, pin_, uv_, fill_holes_, margin_, method_, iterations_, domain);
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
   {
     selection_.node().for_each_field_input_recursive(fn);
     seam_.node().for_each_field_input_recursive(fn);
+    pin_.node().for_each_field_input_recursive(fn);
+    uv_.node().for_each_field_input_recursive(fn);
   }
 
   std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
@@ -184,14 +259,24 @@ class UnwrapFieldInput final : public bke::MeshFieldInput {
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  const NodeGeometryUVUnwrap &storage = node_storage(params.node());
   const auto method = params.get_input<GeometryNodeUVUnwrapMethod>("Method");
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const Field<bool> seam_field = params.extract_input<Field<bool>>("Seam");
+  const Field<bool> pin_field = params.extract_input<Field<bool>>("Pin");
+  const Field<float3> uv_field = params.extract_input<Field<float3>>("UV");
   const bool fill_holes = params.extract_input<bool>("Fill Holes");
   const float margin = params.extract_input<float>("Margin");
+
+  /* Get iterations for SLIM method - socket only exists based on storage.method. */
+  int iterations = 5;  /* Default value. */
+  if (storage.method == GEO_NODE_UV_UNWRAP_METHOD_MINIMUM_STRETCH) {
+    iterations = params.extract_input<int>("Iterations");
+  }
+
   params.set_output("UV",
                     Field<float3>(std::make_shared<UnwrapFieldInput>(
-                        selection_field, seam_field, fill_holes, margin, method)));
+                        selection_field, seam_field, pin_field, uv_field, fill_holes, margin, method, iterations)));
 }
 
 static void node_register()

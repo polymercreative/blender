@@ -733,17 +733,25 @@ static Mesh *bake_mesh_new_from_object(Depsgraph *depsgraph,
 static bool bake_targets_init_image_textures(const BakeAPIRender *bkr,
                                              BakeTargets *targets,
                                              Object *ob,
+                                             const Mesh *mesh_eval,
                                              ReportList *reports)
 {
-  int materials_num = ob->totcol;
+  /* Use mesh material count if available (handles Set Material geometry node),
+   * otherwise fall back to object material count */
+  int materials_num = mesh_eval ? mesh_eval->totcol : ob->totcol;
+  printf("[BAKE IMAGE TEXTURES DEBUG] Object has %d materials, mesh_eval has %d materials\n",
+         ob->totcol, mesh_eval ? mesh_eval->totcol : 0);
 
   if (materials_num == 0) {
+    printf("[BAKE IMAGE TEXTURES DEBUG] No materials on object\n");
     if (bkr->save_mode == R_BAKE_SAVE_INTERNAL) {
+      printf("[BAKE IMAGE TEXTURES DEBUG] ERROR: Internal save mode requires materials\n");
       BKE_report(
           reports, RPT_ERROR, "No active image found, add a material or bake to an external file");
       return false;
     }
     if (bkr->is_split_materials) {
+      printf("[BAKE IMAGE TEXTURES DEBUG] ERROR: Split materials requires materials\n");
       BKE_report(
           reports,
           RPT_ERROR,
@@ -764,10 +772,14 @@ static bool bake_targets_init_image_textures(const BakeAPIRender *bkr,
   for (int i = 0; i < materials_num; i++) {
     Image *image;
     const bNode *node = nullptr;
-    ED_object_get_active_image(ob, i + 1, &image, nullptr, &node, nullptr);
+    /* Use evaluated mesh for material lookup (handles Set Material node in geometry nodes) */
+    ED_object_get_active_image(ob, i + 1, mesh_eval, &image, nullptr, &node, nullptr);
+
+    printf("[BAKE IMAGE TEXTURES DEBUG] Material %d: image=%p, node=%p\n", i, (void*)image, (void*)node);
 
     /* Don't bake to unselected images. */
     if (node && !(node->flag & NODE_SELECT)) {
+      printf("[BAKE IMAGE TEXTURES DEBUG] Material %d: node not selected, ignoring\n", i);
       image = nullptr;
     }
 
@@ -776,6 +788,7 @@ static bool bake_targets_init_image_textures(const BakeAPIRender *bkr,
     /* Some materials have no image, we just ignore those cases.
      * Also setup each image only once. */
     if (image && !(image->id.tag & ID_TAG_DOIT)) {
+      printf("[BAKE IMAGE TEXTURES DEBUG] Material %d: Adding image %s\n", i, image->id.name + 2);
       LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
         /* Add bake image. */
         targets->images = static_cast<BakeImage *>(
@@ -783,23 +796,30 @@ static bool bake_targets_init_image_textures(const BakeAPIRender *bkr,
         targets->images[targets->images_num].image = image;
         targets->images[targets->images_num].tile_number = tile->tile_number;
         targets->images_num++;
+        printf("[BAKE IMAGE TEXTURES DEBUG] Added tile %d, images_num now %d\n",
+               tile->tile_number, targets->images_num);
       }
 
       image->id.tag |= ID_TAG_DOIT;
     }
   }
 
+  printf("[BAKE IMAGE TEXTURES DEBUG] Final images_num=%d\n", targets->images_num);
   return true;
 }
 
 static bool bake_targets_init_internal(const BakeAPIRender *bkr,
                                        BakeTargets *targets,
                                        Object *ob,
+                                       const Mesh *mesh_eval,
                                        ReportList *reports)
 {
-  if (!bake_targets_init_image_textures(bkr, targets, ob, reports)) {
+  printf("[BAKE TARGETS INTERNAL DEBUG] Starting internal target init\n");
+  if (!bake_targets_init_image_textures(bkr, targets, ob, mesh_eval, reports)) {
+    printf("[BAKE TARGETS INTERNAL DEBUG] bake_targets_init_image_textures FAILED\n");
     return false;
   }
+  printf("[BAKE TARGETS INTERNAL DEBUG] images_num=%d\n", targets->images_num);
 
   /* Saving to image datablocks. */
   for (int i = 0; i < targets->images_num; i++) {
@@ -813,6 +833,8 @@ static bool bake_targets_init_internal(const BakeAPIRender *bkr,
     ImBuf *ibuf = BKE_image_acquire_ibuf(bk_image->image, &iuser, &lock);
 
     if (ibuf) {
+      printf("[BAKE TARGETS INTERNAL DEBUG] Image %d: %s (%dx%d)\n",
+             i, bk_image->image->id.name + 2, ibuf->x, ibuf->y);
       bk_image->width = ibuf->x;
       bk_image->height = ibuf->y;
       bk_image->offset = targets->pixels_num;
@@ -821,6 +843,8 @@ static bool bake_targets_init_internal(const BakeAPIRender *bkr,
       targets->pixels_num += size_t(ibuf->x) * size_t(ibuf->y);
     }
     else {
+      printf("[BAKE TARGETS INTERNAL DEBUG] ERROR: Image %d (%s) has no ibuf\n",
+             i, bk_image->image->id.name + 2);
       BKE_image_release_ibuf(bk_image->image, ibuf, lock);
       BKE_reportf(reports, RPT_ERROR, "Uninitialized image %s", bk_image->image->id.name + 2);
       return false;
@@ -828,6 +852,7 @@ static bool bake_targets_init_internal(const BakeAPIRender *bkr,
     BKE_image_release_ibuf(bk_image->image, ibuf, lock);
   }
 
+  printf("[BAKE TARGETS INTERNAL DEBUG] Total pixels_num=%zu\n", targets->pixels_num);
   return true;
 }
 
@@ -882,9 +907,10 @@ static bool bake_targets_output_internal(const BakeAPIRender *bkr,
 static bool bake_targets_init_external(const BakeAPIRender *bkr,
                                        BakeTargets *targets,
                                        Object *ob,
+                                       const Mesh *mesh_eval,
                                        ReportList *reports)
 {
-  if (!bake_targets_init_image_textures(bkr, targets, ob, reports)) {
+  if (!bake_targets_init_image_textures(bkr, targets, ob, mesh_eval, reports)) {
     return false;
   }
 
@@ -1324,27 +1350,41 @@ static bool bake_targets_init(const BakeAPIRender *bkr,
                               BakeTargets *targets,
                               Object *ob,
                               Object *ob_eval,
+                              const Mesh *mesh_eval,
                               ReportList *reports)
 {
+  printf("[BAKE TARGETS DEBUG] target=%d, save_mode=%d, mesh_eval=%p\n",
+         bkr->target, bkr->save_mode, (void*)mesh_eval);
+
   if (bkr->target == R_BAKE_TARGET_IMAGE_TEXTURES) {
     if (bkr->save_mode == R_BAKE_SAVE_INTERNAL) {
-      if (!bake_targets_init_internal(bkr, targets, ob_eval, reports)) {
+      printf("[BAKE TARGETS DEBUG] Calling bake_targets_init_internal\n");
+      if (!bake_targets_init_internal(bkr, targets, ob_eval, mesh_eval, reports)) {
+        printf("[BAKE TARGETS DEBUG] bake_targets_init_internal FAILED\n");
         return false;
       }
+      printf("[BAKE TARGETS DEBUG] bake_targets_init_internal succeeded\n");
     }
     else if (bkr->save_mode == R_BAKE_SAVE_EXTERNAL) {
-      if (!bake_targets_init_external(bkr, targets, ob_eval, reports)) {
+      printf("[BAKE TARGETS DEBUG] Calling bake_targets_init_external\n");
+      if (!bake_targets_init_external(bkr, targets, ob_eval, mesh_eval, reports)) {
+        printf("[BAKE TARGETS DEBUG] bake_targets_init_external FAILED\n");
         return false;
       }
+      printf("[BAKE TARGETS DEBUG] bake_targets_init_external succeeded\n");
     }
   }
   else if (bkr->target == R_BAKE_TARGET_VERTEX_COLORS) {
+    printf("[BAKE TARGETS DEBUG] Calling bake_targets_init_vertex_colors\n");
     if (!bake_targets_init_vertex_colors(bkr->main, targets, ob, reports)) {
+      printf("[BAKE TARGETS DEBUG] bake_targets_init_vertex_colors FAILED\n");
       return false;
     }
   }
 
+  printf("[BAKE TARGETS DEBUG] pixels_num=%zu\n", targets->pixels_num);
   if (targets->pixels_num == 0) {
+    printf("[BAKE TARGETS DEBUG] FAILED: pixels_num is 0\n");
     return false;
   }
 
@@ -1362,10 +1402,13 @@ static void bake_targets_populate_pixels(const BakeAPIRender *bkr,
                                          Mesh *mesh_eval,
                                          BakePixel *pixel_array)
 {
+  printf("[BAKE API DEBUG] bake_targets_populate_pixels called, target=%d\n", bkr->target);
   if (bkr->target == R_BAKE_TARGET_VERTEX_COLORS) {
+    printf("[BAKE API DEBUG] Using vertex colors path\n");
     bake_targets_populate_pixels_color_attributes(targets, ob, mesh_eval, pixel_array);
   }
   else {
+    printf("[BAKE API DEBUG] Calling RE_bake_pixels_populate, pixels_num=%zu\n", targets->pixels_num);
     RE_bake_pixels_populate(mesh_eval, pixel_array, targets->pixels_num, targets, bkr->uv_layer);
   }
 }
@@ -1408,6 +1451,9 @@ static wmOperatorStatus bake(const BakeAPIRender *bkr,
                              const Span<PointerRNA> selected_objects,
                              ReportList *reports)
 {
+  printf("[BAKE API DEBUG] ========== ENTERING bake() FUNCTION ==========\n");
+  printf("[BAKE API DEBUG] Object: %s\n", ob_low->id.name + 2);
+
   Render *re = bkr->render;
   Main *bmain = bkr->main;
   Scene *scene = bkr->scene;
@@ -1415,6 +1461,7 @@ static wmOperatorStatus bake(const BakeAPIRender *bkr,
 
   /* We build a depsgraph for the baking,
    * so we don't need to change the original data to adjust visibility and modifiers. */
+  printf("[BAKE API DEBUG] Creating depsgraph\n");
   Depsgraph *depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
 
   /* Ensure meshes are generated even for objects with animated visibility, see: #107426. */
@@ -1528,22 +1575,32 @@ static wmOperatorStatus bake(const BakeAPIRender *bkr,
   }
 
   /* Initialize bake targets. */
-  if (!bake_targets_init(bkr, &targets, ob_low, ob_low_eval, reports)) {
+  printf("[BAKE API DEBUG] Initializing bake targets with evaluated mesh\n");
+  if (!bake_targets_init(bkr, &targets, ob_low, ob_low_eval, me_low_eval, reports)) {
+    printf("[BAKE API DEBUG] ERROR: bake_targets_init failed\n");
     goto cleanup;
   }
+  printf("[BAKE API DEBUG] Bake targets initialized successfully\n");
 
   /* Populate the pixel array with the face data. Except if we use a cage, then
    * it is populated later with the cage mesh (smoothed version of the mesh). */
   pixel_array_low = MEM_malloc_arrayN<BakePixel>(targets.pixels_num, "bake pixels low poly");
+  printf("[BAKE API DEBUG] pixels_num=%zu, is_selected_to_active=%d, is_cage=%d, ob_cage=%p\n",
+         targets.pixels_num, bkr->is_selected_to_active, bkr->is_cage, (void*)ob_cage);
   if ((bkr->is_selected_to_active && (ob_cage == nullptr) && bkr->is_cage) == false) {
     if (check_valid_uv_map && !CustomData_has_layer(&me_low_eval->corner_data, CD_PROP_FLOAT2)) {
+      printf("[BAKE API DEBUG] ERROR: No UV map in evaluated mesh\n");
       BKE_reportf(reports,
                   RPT_ERROR,
                   "No UV map found in the evaluated object \"%s\"",
                   ob_low->id.name + 2);
       goto cleanup;
     }
+    printf("[BAKE API DEBUG] About to populate pixels\n");
     bake_targets_populate_pixels(bkr, &targets, ob_low, me_low_eval, pixel_array_low);
+  }
+  else {
+    printf("[BAKE API DEBUG] SKIPPING pixel population (cage will be used later)\n");
   }
 
   if (bkr->is_selected_to_active) {
@@ -2007,6 +2064,10 @@ static void bake_startjob(void *bkv, wmJobWorkerStatus *worker_status)
 {
   BakeAPIRender *bkr = (BakeAPIRender *)bkv;
 
+  printf("[BAKE API DEBUG] ========== BAKE JOB STARTED ==========\n");
+  printf("[BAKE API DEBUG] pass_type=%d, target=%d, is_selected_to_active=%d\n",
+         bkr->pass_type, bkr->target, bkr->is_selected_to_active);
+
   /* setup new render */
   bkr->do_update = &worker_status->do_update;
   bkr->progress = &worker_status->progress;
@@ -2014,6 +2075,7 @@ static void bake_startjob(void *bkv, wmJobWorkerStatus *worker_status)
   RE_SetReports(bkr->render, bkr->reports);
 
   if (!bake_pass_filter_check(bkr->pass_type, bkr->pass_filter, bkr->reports)) {
+    printf("[BAKE API DEBUG] CANCELLED: pass_filter_check failed\n");
     bkr->result = OPERATOR_CANCELLED;
     return;
   }
@@ -2027,9 +2089,12 @@ static void bake_startjob(void *bkv, wmJobWorkerStatus *worker_status)
                           bkr->is_selected_to_active,
                           bkr->target))
   {
+    printf("[BAKE API DEBUG] CANCELLED: bake_objects_check failed\n");
     bkr->result = OPERATOR_CANCELLED;
     return;
   }
+
+  printf("[BAKE API DEBUG] Checks passed, proceeding with bake\n");
 
   if (bkr->is_clear) {
     const bool is_tangent = ((bkr->pass_type == SCE_PASS_NORMAL) &&
@@ -2038,15 +2103,21 @@ static void bake_startjob(void *bkv, wmJobWorkerStatus *worker_status)
   }
 
   if (bkr->is_selected_to_active) {
+    printf("[BAKE API DEBUG] Baking selected to active\n");
     bkr->result = bake(bkr, bkr->ob, bkr->selected_objects, bkr->reports);
+    printf("[BAKE API DEBUG] Bake result: %d\n", bkr->result);
   }
   else {
+    printf("[BAKE API DEBUG] Baking %zu selected objects\n", bkr->selected_objects.size());
     bkr->is_clear = bkr->is_clear && bkr->selected_objects.size() == 1;
     for (const PointerRNA &ptr : bkr->selected_objects) {
       Object *ob_iter = static_cast<Object *>(ptr.data);
+      printf("[BAKE API DEBUG] Baking object: %s\n", ob_iter->id.name + 2);
       bkr->result = bake(bkr, ob_iter, {}, bkr->reports);
+      printf("[BAKE API DEBUG] Bake result: %d\n", bkr->result);
 
       if (bkr->result == OPERATOR_CANCELLED) {
+        printf("[BAKE API DEBUG] Bake was cancelled, stopping\n");
         return;
       }
     }

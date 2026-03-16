@@ -307,6 +307,7 @@ SDNA_DEFAULT_DECL_STRUCT(SubsurfModifierData);
 SDNA_DEFAULT_DECL_STRUCT(SurfaceModifierData);
 SDNA_DEFAULT_DECL_STRUCT(SurfaceDeformModifierData);
 SDNA_DEFAULT_DECL_STRUCT(TriangulateModifierData);
+SDNA_DEFAULT_DECL_STRUCT(FixPolesModifierData);
 SDNA_DEFAULT_DECL_STRUCT(UVProjectModifierData);
 SDNA_DEFAULT_DECL_STRUCT(UVWarpModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WarpModifierData);
@@ -596,6 +597,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(SurfaceModifierData),
     SDNA_DEFAULT_DECL(SurfaceDeformModifierData),
     SDNA_DEFAULT_DECL(TriangulateModifierData),
+    SDNA_DEFAULT_DECL(FixPolesModifierData),
     SDNA_DEFAULT_DECL(UVProjectModifierData),
     SDNA_DEFAULT_DECL(UVWarpModifierData),
     SDNA_DEFAULT_DECL(WarpModifierData),

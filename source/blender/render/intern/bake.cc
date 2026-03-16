@@ -446,17 +446,20 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *mesh_
   using namespace blender;
   int i;
 
-  const int tottri = poly_to_tri_count(mesh->faces_num, mesh->corners_num);
+  /* Use evaluated mesh for all geometry data to support geometry nodes modifications. */
+  Mesh *mesh_to_use = mesh_eval ? mesh_eval : mesh;
+
+  const int tottri = poly_to_tri_count(mesh_to_use->faces_num, mesh_to_use->corners_num);
   TriTessFace *triangles;
 
   /* calculate normal for each face only once */
   uint mpoly_prev = UINT_MAX;
   blender::float3 no;
 
-  const blender::Span<blender::float3> positions = mesh->vert_positions();
-  const blender::OffsetIndices faces = mesh->faces();
-  const blender::Span<int> corner_verts = mesh->corner_verts();
-  const bke::AttributeAccessor attributes = mesh->attributes();
+  const blender::Span<blender::float3> positions = mesh_to_use->vert_positions();
+  const blender::OffsetIndices faces = mesh_to_use->faces();
+  const blender::Span<int> corner_verts = mesh_to_use->corner_verts();
+  const bke::AttributeAccessor attributes = mesh_to_use->attributes();
   const VArray<bool> sharp_faces =
       attributes.lookup_or_default<bool>("sharp_face", bke::AttrDomain::Face, false).varray;
 
@@ -464,10 +467,10 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *mesh_
       MEM_mallocN(sizeof(*corner_tris) * tottri, __func__));
   triangles = MEM_calloc_arrayN<TriTessFace>(tottri, __func__);
 
-  const bool calculate_normal = BKE_mesh_face_normals_are_dirty(mesh);
+  const bool calculate_normal = BKE_mesh_face_normals_are_dirty(mesh_to_use);
   blender::Span<blender::float3> precomputed_normals;
   if (!calculate_normal) {
-    precomputed_normals = mesh->face_normals();
+    precomputed_normals = mesh_to_use->face_normals();
   }
 
   if (!precomputed_normals.is_empty()) {
@@ -481,26 +484,26 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *mesh_
   Array<float4> tspace;
   blender::Span<blender::float3> corner_normals;
   if (tangent) {
-    const StringRef active_uv_map = CustomData_get_active_layer_name(&mesh_eval->corner_data,
+    const StringRef active_uv_map = CustomData_get_active_layer_name(&mesh_to_use->corner_data,
                                                                      CD_PROP_FLOAT2);
     const VArraySpan uv_map = *attributes.lookup<float2>(active_uv_map, bke::AttrDomain::Corner);
     Array<Array<float4>> result = bke::mesh::calc_uv_tangents(positions,
                                                               faces,
                                                               corner_verts,
                                                               {corner_tris, tottri},
-                                                              mesh->corner_tri_faces(),
+                                                              mesh_to_use->corner_tri_faces(),
                                                               VArraySpan(sharp_faces),
-                                                              mesh->vert_normals(),
-                                                              mesh->face_normals(),
-                                                              mesh->corner_normals(),
+                                                              mesh_to_use->vert_normals(),
+                                                              mesh_to_use->face_normals(),
+                                                              mesh_to_use->corner_normals(),
                                                               {uv_map});
     tspace = std::move(result[0]);
 
-    corner_normals = mesh_eval->corner_normals();
+    corner_normals = mesh_to_use->corner_normals();
   }
 
-  const blender::Span<blender::float3> vert_normals = mesh->vert_normals();
-  const blender::Span<int> tri_faces = mesh->corner_tri_faces();
+  const blender::Span<blender::float3> vert_normals = mesh_to_use->vert_normals();
+  const blender::Span<int> tri_faces = mesh_to_use->corner_tri_faces();
   for (i = 0; i < tottri; i++) {
     const int3 &tri = corner_tris[i];
     const int face_i = tri_faces[i];
@@ -717,16 +720,24 @@ void RE_bake_pixels_populate(Mesh *mesh,
   using namespace blender;
   const bke::AttributeAccessor attributes = mesh->attributes();
   VArraySpan<float2> uv_map;
+  StringRef uv_layer_name;
   if (uv_layer.is_empty()) {
-    const StringRef active_layer_name = CustomData_get_active_layer_name(&mesh->corner_data,
-                                                                         CD_PROP_FLOAT2);
-    uv_map = *attributes.lookup<float2>(active_layer_name, bke::AttrDomain::Corner);
+    uv_layer_name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2);
+    printf("[BAKE DEBUG] Looking up active UV layer: '%s'\n", uv_layer_name.data());
+    uv_map = *attributes.lookup<float2>(uv_layer_name, bke::AttrDomain::Corner);
   }
   else {
+    uv_layer_name = uv_layer;
+    printf("[BAKE DEBUG] Looking up specified UV layer: '%s'\n", uv_layer_name.data());
     uv_map = *attributes.lookup<float2>(uv_layer, bke::AttrDomain::Corner);
   }
 
+  printf("[BAKE DEBUG] UV map found: %s, size: %zu\n",
+         uv_map.is_empty() ? "NO" : "YES",
+         uv_map.size());
+
   if (uv_map.is_empty()) {
+    printf("[BAKE DEBUG] UV map is empty, aborting bake\n");
     return;
   }
 
@@ -745,6 +756,8 @@ void RE_bake_pixels_populate(Mesh *mesh,
   }
 
   const int tottri = poly_to_tri_count(mesh->faces_num, mesh->corners_num);
+  printf("[BAKE DEBUG] Total triangles: %d, Total images: %d\n", tottri, targets->images_num);
+
   blender::int3 *corner_tris = MEM_malloc_arrayN<blender::int3>(size_t(tottri), __func__);
 
   blender::bke::mesh::corner_tris_calc(
@@ -756,6 +769,7 @@ void RE_bake_pixels_populate(Mesh *mesh,
 
   const int materials_num = targets->materials_num;
 
+  int rasterized_tris = 0;
   for (int i = 0; i < tottri; i++) {
     const int3 &tri = corner_tris[i];
     const int face_i = tri_faces[i];
@@ -767,11 +781,13 @@ void RE_bake_pixels_populate(Mesh *mesh,
                                    clamp_i(material_indices[face_i], 0, materials_num - 1) :
                                    0;
     Image *image = targets->material_to_image[material_index];
+    bool tri_rasterized = false;
     for (int image_id = 0; image_id < targets->images_num; image_id++) {
       BakeImage *bk_image = &targets->images[image_id];
       if (bk_image->image != image) {
         continue;
       }
+      tri_rasterized = true;
 
       /* Compute triangle vertex UV coordinates. */
       float vec[3][2];
@@ -792,7 +808,12 @@ void RE_bake_pixels_populate(Mesh *mesh,
       zspan_scanconvert(
           &bd.zspan[image_id], (void *)&bd, vec[0], vec[1], vec[2], store_bake_pixel);
     }
+    if (tri_rasterized) {
+      rasterized_tris++;
+    }
   }
+
+  printf("[BAKE DEBUG] Rasterized %d out of %d triangles\n", rasterized_tris, tottri);
 
   for (int i = 0; i < targets->images_num; i++) {
     zbuf_free_span(&bd.zspan[i]);

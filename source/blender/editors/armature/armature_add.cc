@@ -1822,10 +1822,17 @@ static wmOperatorStatus armature_bone_primitive_add_exec(bContext *C, wmOperator
     BLI_assert_msg(bcoll_ref,
                    "Bone that is not visible due to its bone collections MUST be assigned to at "
                    "least one of them.");
-    BKE_reportf(op->reports,
-                RPT_WARNING,
-                "Bone was added to a hidden collection '%s'",
-                bcoll_ref->bcoll->name);
+    if (bcoll_ref && bcoll_ref->bcoll) {
+      BKE_reportf(op->reports,
+                  RPT_WARNING,
+                  "Bone was added to a hidden collection '%s'",
+                  bcoll_ref->bcoll->name);
+    }
+    else {
+      BKE_reportf(op->reports,
+                  RPT_WARNING,
+                  "Bone was added to a hidden collection");
+    }
   }
 
   copy_v3_v3(bone->head, curs);

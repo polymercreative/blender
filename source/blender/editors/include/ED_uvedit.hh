@@ -25,6 +25,7 @@ struct Image;
 struct ImageUser;
 struct ListBase;
 struct Main;
+struct Mesh;
 struct Object;
 struct Scene;
 struct SpaceImage;
@@ -76,6 +77,17 @@ bool ED_uvedit_center_from_pivot_ex(const SpaceImage *sima,
 
 bool ED_object_get_active_image(Object *ob,
                                 int mat_nr,
+                                Image **r_ima,
+                                ImageUser **r_iuser,
+                                const bNode **r_node,
+                                const bNodeTree **r_ntree);
+/**
+ * Variant that accepts evaluated mesh data for use with geometry nodes.
+ * When mesh is provided, materials are looked up from the mesh instead of ob->data.
+ */
+bool ED_object_get_active_image(Object *ob,
+                                int mat_nr,
+                                const Mesh *mesh,
                                 Image **r_ima,
                                 ImageUser **r_iuser,
                                 const bNode **r_node,

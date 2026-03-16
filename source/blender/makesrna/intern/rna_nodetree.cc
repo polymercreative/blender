@@ -7890,6 +7890,19 @@ static void rna_def_geo_bake(BlenderRNA *brna, StructRNA *srna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "show_in_modifier_panel", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "show_in_modifier_panel", 1);
+  RNA_def_property_ui_text(prop,
+                           "Show in Modifier Panel",
+                           "Show a bake button for this node in the modifier properties panel");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "modifier_panel_button_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "modifier_panel_button_name");
+  RNA_def_property_ui_text(
+      prop, "Button Name", "Custom name for the bake button in the modifier panel");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void rna_def_combine_bundle_item(BlenderRNA *brna)
@@ -10075,9 +10088,14 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("FunctionNode", "FunctionNodeValueToString");
 
   define("GeometryNode", "GeometryNodeAccumulateField");
+  define("GeometryNode", "GeometryNodeAdaptiveRemesh");
   define("GeometryNode", "GeometryNodeAttributeDomainSize");
   define("GeometryNode", "GeometryNodeAttributeStatistic");
+  define("GeometryNode", "GeometryNodeDissolveFlatVertices");
+  define("GeometryNode", "GeometryNodeSelectBadTriangles");
+  define("GeometryNode", "GeometryNodeBevel");
   define("GeometryNode", "GeometryNodeBake", rna_def_geo_bake);
+  define("GeometryNode", "GeometryNodeHardBevel");
   define("GeometryNode", "GeometryNodeBlurAttribute");
   define("GeometryNode", "GeometryNodeBoundBox");
   define("GeometryNode", "GeometryNodeCameraInfo");
@@ -10106,6 +10124,7 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("GeometryNode", "GeometryNodeCurveToMesh");
   define("GeometryNode", "GeometryNodeCurveToPoints");
   define("GeometryNode", "GeometryNodeDeformCurvesOnSurface");
+  define("GeometryNode", "GeometryNodeDecimate");
   define("GeometryNode", "GeometryNodeDeleteGeometry");
   define("GeometryNode", "GeometryNodeDistributePointsInGrid");
   define("GeometryNode", "GeometryNodeDistributePointsInVolume");
@@ -10127,6 +10146,7 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("GeometryNode", "GeometryNodeFieldVariance");
   define("GeometryNode", "GeometryNodeFillCurve");
   define("GeometryNode", "GeometryNodeFilletCurve");
+  define("GeometryNode", "GeometryNodeFixPoles");
   define("GeometryNode", "GeometryNodeFlipFaces");
   define("GeometryNode", "GeometryNodeForeachGeometryElementInput", def_geo_foreach_geometry_element_input);
   define("GeometryNode", "GeometryNodeForeachGeometryElementOutput", def_geo_foreach_geometry_element_output);
@@ -10189,6 +10209,7 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("GeometryNode", "GeometryNodeInputSplineResolution");
   define("GeometryNode", "GeometryNodeInputTangent");
   define("GeometryNode", "GeometryNodeInputVoxelIndex");
+  define("GeometryNode", "GeometryNodeInset");
   define("GeometryNode", "GeometryNodeInstanceOnPoints");
   define("GeometryNode", "GeometryNodeInstancesToPoints");
   define("GeometryNode", "GeometryNodeInstanceTransform");
@@ -10202,6 +10223,8 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("GeometryNode", "GeometryNodeMenuSwitch", def_geo_menu_switch);
   define("GeometryNode", "GeometryNodeMergeByDistance");
   define("GeometryNode", "GeometryNodeMergeLayers");
+  define("GeometryNode", "GeometryNodeMergeSmallIslands");
+  define("GeometryNode", "GeometryNodeMergeSimilarIslands");
   define("GeometryNode", "GeometryNodeMeshBoolean");
   define("GeometryNode", "GeometryNodeMeshCircle");
   define("GeometryNode", "GeometryNodeMeshCone");
@@ -10275,6 +10298,8 @@ static void rna_def_nodes(BlenderRNA *brna)
   define("GeometryNode", "GeometryNodeSetShadeSmooth");
   define("GeometryNode", "GeometryNodeSetSplineCyclic");
   define("GeometryNode", "GeometryNodeSetSplineResolution");
+  define("GeometryNode", "GeometryNodeShrinkwrap");
+  define("GeometryNode", "GeometryNodeSkeletonInset");
   define("GeometryNode", "GeometryNodeSimulationInput", def_geo_simulation_input);
   define("GeometryNode", "GeometryNodeSimulationOutput", def_geo_simulation_output);
   define("GeometryNode", "GeometryNodeSortElements");

@@ -35,6 +35,7 @@ set(SRC
   intern/MOD_dynamicpaint.cc
   intern/MOD_edgesplit.cc
   intern/MOD_explode.cc
+  intern/MOD_fix_poles.cc
   intern/MOD_fluid.cc
   intern/MOD_grease_pencil_armature.cc
   intern/MOD_grease_pencil_array.cc

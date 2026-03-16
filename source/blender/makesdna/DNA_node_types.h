@@ -2516,8 +2516,67 @@ typedef struct NodeGeometryBake {
   int items_num;
   int next_identifier;
   int active_index;
-  char _pad[4];
+  char _pad0[4];
+  /** Custom name for the bake button in the modifier panel. */
+  char *modifier_panel_button_name;
+  /** If true, show a bake button for this node in the modifier panel. */
+  uint8_t show_in_modifier_panel;
+  char _pad1[7];
 } NodeGeometryBake;
+
+typedef struct NodeGeometryMergeSmallIslands {
+  /** #AttrDomain. */
+  int8_t domain;
+} NodeGeometryMergeSmallIslands;
+
+typedef struct NodeGeometryMergeSimilarIslands {
+  /** #geometry::MergeSimilarMode. */
+  int8_t merge_mode;
+  /** #geometry::VectorDifferenceMode. */
+  int8_t vector_mode;
+} NodeGeometryMergeSimilarIslands;
+
+typedef struct NodeGeometryDecimate {
+  /** #geometry::DecimateMode. */
+  int8_t mode;
+  /** Symmetry axis (0=X, 1=Y, 2=Z). */
+  int8_t symmetry_axis;
+  /** #BMO_Delimit flags for planar mode. */
+  int8_t delimit;
+  char _pad[1];
+} NodeGeometryDecimate;
+
+typedef struct NodeGeometryShrinkwrap {
+  /** #eMODShrinkwrapType (NEAREST_SURFACE, PROJECT, etc.). */
+  int8_t wrap_method;
+  /** #eMODShrinkwrapMode (ON_SURFACE, INSIDE, OUTSIDE, etc.). */
+  int8_t wrap_mode;
+  /** Project axis flags (#eMODShrinkwrapProjectionAxis). */
+  int8_t proj_axis;
+  /** Face cull mode (0=off, 1=front, 2=back). */
+  int8_t cull_face;
+} NodeGeometryShrinkwrap;
+
+typedef struct NodeGeometryBevel {
+  /** 0=Vertices, 1=Edges. */
+  int8_t mode;
+  /** MOD_BEVEL_AMT_* offset type (0-4). */
+  int8_t offset_type;
+  /** 0=Standard, 1=Collision detection. */
+  int8_t clamp_method;
+  char _pad[1];
+} NodeGeometryBevel;
+
+typedef struct NodeGeometryInset {
+  /** 0=Individual, 1=Region. */
+  int8_t mode;
+  /** Scale the offset to give more even thickness. */
+  int8_t use_even_offset;
+  /** Scale the offset by surrounding geometry. */
+  int8_t use_relative_offset;
+  /** Inset along existing edges (Region mode). */
+  int8_t use_edge_rail;
+} NodeGeometryInset;
 
 typedef struct NodeCombineBundleItem {
   char *name;
@@ -3359,6 +3418,7 @@ typedef enum GeometryNodeMergeByDistanceMode {
 typedef enum GeometryNodeUVUnwrapMethod {
   GEO_NODE_UV_UNWRAP_METHOD_ANGLE_BASED = 0,
   GEO_NODE_UV_UNWRAP_METHOD_CONFORMAL = 1,
+  GEO_NODE_UV_UNWRAP_METHOD_MINIMUM_STRETCH = 2,
 } GeometryNodeUVUnwrapMethod;
 
 typedef enum GeometryNodeMeshLineMode {

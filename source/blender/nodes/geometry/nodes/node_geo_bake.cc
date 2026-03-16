@@ -95,11 +95,15 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryBake *data = MEM_callocN<NodeGeometryBake>(__func__);
+  data->modifier_panel_button_name = BLI_strdup("Bake");
+  data->show_in_modifier_panel = false;
   node->storage = data;
 }
 
 static void node_free_storage(bNode *node)
 {
+  NodeGeometryBake &storage = node_storage(*node);
+  MEM_SAFE_FREE(storage.modifier_panel_button_name);
   socket_items::destruct_array<BakeItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
@@ -109,6 +113,10 @@ static void node_copy_storage(bNodeTree * /*tree*/, bNode *dst_node, const bNode
   const NodeGeometryBake &src_storage = node_storage(*src_node);
   auto *dst_storage = MEM_dupallocN<NodeGeometryBake>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  if (src_storage.modifier_panel_button_name) {
+    dst_storage->modifier_panel_button_name = BLI_strdup(src_storage.modifier_panel_button_name);
+  }
 
   socket_items::copy_array<BakeItemsAccessor>(*src_node, *dst_node);
 }
@@ -505,6 +513,18 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     }
   }
 
+  /* Modifier panel integration settings. */
+  {
+    uiLayout *col = &layout->column(false);
+    col->use_property_split_set(true);
+    col->use_property_decorate_set(false);
+    col->separator();
+    col->prop(ptr, "show_in_modifier_panel", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+    uiLayout *subcol = &col->column(false);
+    subcol->active_set(node_storage(node).show_in_modifier_panel);
+    subcol->prop(ptr, "modifier_panel_button_name", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  }
+
   draw_common_bake_settings(C, ctx, layout);
   draw_data_blocks(C, layout, ctx.bake_rna);
 }
@@ -536,11 +556,15 @@ static const bNodeSocket *node_internally_linked_input(const bNodeTree & /*tree*
 
 static void node_blend_write(const bNodeTree & /*tree*/, const bNode &node, BlendWriter &writer)
 {
+  const NodeGeometryBake &storage = node_storage(node);
+  BLO_write_string(&writer, storage.modifier_panel_button_name);
   socket_items::blend_write<BakeItemsAccessor>(&writer, node);
 }
 
 static void node_blend_read(bNodeTree & /*tree*/, bNode &node, BlendDataReader &reader)
 {
+  NodeGeometryBake &storage = node_storage(node);
+  BLO_read_string(&reader, &storage.modifier_panel_button_name);
   socket_items::blend_read_data<BakeItemsAccessor>(&reader, node);
 }
 
