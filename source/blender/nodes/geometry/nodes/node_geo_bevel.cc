@@ -100,16 +100,16 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  layout->prop(ptr, "mode", UI_ITEM_R_EXPAND, std::nullopt, ICON_NONE);
-  layout->prop(ptr, "offset_type", UI_ITEM_NONE, std::nullopt, ICON_NONE);
-  layout->prop(ptr, "clamp_method", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  layout.prop(ptr, "mode", ui::ITEM_R_EXPAND, std::nullopt, ICON_NONE);
+  layout.prop(ptr, "offset_type", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+  layout.prop(ptr, "clamp_method", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryBevel *data = MEM_callocN<NodeGeometryBevel>(__func__);
+  NodeGeometryBevel *data = MEM_new<NodeGeometryBevel>(__func__);
   data->mode = int8_t(BevelMode::Edges);
   data->offset_type = int8_t(BevelOffsetType::Offset);
   node->storage = data;

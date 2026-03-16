@@ -67,9 +67,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  layout->prop(ptr, "wrap_method", UI_ITEM_NONE, "", ICON_NONE);
+  layout.prop(ptr, "wrap_method", UI_ITEM_NONE, "", ICON_NONE);
 
   const int wrap_method = RNA_enum_get(ptr, "wrap_method");
   if (ELEM(wrap_method,
@@ -77,18 +77,18 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
            MOD_SHRINKWRAP_NEAREST_SURFACE,
            MOD_SHRINKWRAP_TARGET_PROJECT))
   {
-    layout->prop(ptr, "wrap_mode", UI_ITEM_NONE, "", ICON_NONE);
+    layout.prop(ptr, "wrap_mode", UI_ITEM_NONE, "", ICON_NONE);
   }
 
   if (wrap_method == MOD_SHRINKWRAP_PROJECT) {
-    layout->prop(ptr, "proj_axis", UI_ITEM_R_EXPAND, "Axis", ICON_NONE);
-    layout->prop(ptr, "cull_face", UI_ITEM_R_EXPAND, std::nullopt, ICON_NONE);
+    layout.prop(ptr, "proj_axis", ui::ITEM_R_EXPAND, "Axis", ICON_NONE);
+    layout.prop(ptr, "cull_face", ui::ITEM_R_EXPAND, std::nullopt, ICON_NONE);
   }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryShrinkwrap *data = MEM_callocN<NodeGeometryShrinkwrap>(__func__);
+  NodeGeometryShrinkwrap *data = MEM_new<NodeGeometryShrinkwrap>(__func__);
   data->wrap_method = MOD_SHRINKWRAP_NEAREST_SURFACE;
   data->wrap_mode = MOD_SHRINKWRAP_ON_SURFACE;
   data->proj_axis = MOD_SHRINKWRAP_PROJECT_OVER_NORMAL;

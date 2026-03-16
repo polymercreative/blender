@@ -81,22 +81,22 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  layout->prop(ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
+  layout.prop(ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 
   const int mode = RNA_enum_get(ptr, "mode");
   if (mode == int(geometry::DecimateMode::Collapse)) {
-    layout->prop(ptr, "symmetry_axis", UI_ITEM_R_EXPAND, std::nullopt, ICON_NONE);
+    layout.prop(ptr, "symmetry_axis", ui::ITEM_R_EXPAND, std::nullopt, ICON_NONE);
   }
   else if (mode == int(geometry::DecimateMode::Planar)) {
-    layout->prop(ptr, "delimit", UI_ITEM_NONE, std::nullopt, ICON_NONE);
+    layout.prop(ptr, "delimit", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryDecimate *data = MEM_callocN<NodeGeometryDecimate>(__func__);
+  NodeGeometryDecimate *data = MEM_new<NodeGeometryDecimate>(__func__);
   data->mode = int(geometry::DecimateMode::Collapse);
   data->symmetry_axis = 0; /* X axis */
   data->delimit = 0;       /* No delimit flags */

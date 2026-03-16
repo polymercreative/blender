@@ -53,7 +53,7 @@ Mesh *mesh_decimate_collapse(const Mesh &mesh,
   const bool has_weights = use_vertex_group && vertex_weights != nullptr;
 
   if (has_selection || has_weights) {
-    vweights = static_cast<float *>(MEM_malloc_arrayN(vert_count, sizeof(float), __func__));
+    vweights = MEM_new_array_uninitialized<float>(size_t(vert_count), __func__);
 
     for (int i = 0; i < vert_count; i++) {
       float weight = 1.0f;
@@ -85,7 +85,7 @@ Mesh *mesh_decimate_collapse(const Mesh &mesh,
                             symmetry_eps);
 
   if (vweights) {
-    MEM_freeN(vweights);
+    MEM_delete(vweights);
   }
 
   /* Convert back to Mesh. */
@@ -203,10 +203,8 @@ Mesh *mesh_decimate_planar(const Mesh &mesh,
     }
 
     /* Allocate arrays. */
-    BMVert **vinput_arr = static_cast<BMVert **>(
-        MEM_malloc_arrayN(vinput_len, sizeof(BMVert *), __func__));
-    BMEdge **einput_arr = static_cast<BMEdge **>(
-        MEM_malloc_arrayN(einput_len, sizeof(BMEdge *), __func__));
+    BMVert **vinput_arr = MEM_new_array_uninitialized<BMVert *>(size_t(vinput_len), __func__);
+    BMEdge **einput_arr = MEM_new_array_uninitialized<BMEdge *>(size_t(einput_len), __func__);
 
     /* Fill arrays. */
     int v_out_index = 0;
@@ -235,8 +233,8 @@ Mesh *mesh_decimate_planar(const Mesh &mesh,
                                  einput_len,
                                  0);
 
-    MEM_freeN(vinput_arr);
-    MEM_freeN(einput_arr);
+    MEM_delete(vinput_arr);
+    MEM_delete(einput_arr);
   }
   else {
     /* No selection: process all vertices and edges. */

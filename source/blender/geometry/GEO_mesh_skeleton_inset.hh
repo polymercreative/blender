@@ -9,7 +9,9 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
+namespace blender {
 struct Mesh;
+}
 
 /** \file
  * \ingroup geo
@@ -29,7 +31,7 @@ enum class SkeletonInsetMode {
  * Result of skeleton inset operation.
  */
 struct SkeletonInsetResult {
-  Mesh *mesh;
+  blender::Mesh *mesh;
   Vector<int> inner_face_indices;  /* Inset face(s) - may be multiple after splits */
   Vector<int> outer_face_indices;  /* Rim faces connecting original to inset */
 };
@@ -54,7 +56,7 @@ struct SkeletonInsetResult {
  * \returns #std::nullopt if no faces selected or mesh has no faces.
  * Otherwise returns result with new mesh and face index arrays.
  */
-std::optional<SkeletonInsetResult> mesh_skeleton_inset(const Mesh &mesh,
+std::optional<SkeletonInsetResult> mesh_skeleton_inset(const blender::Mesh &mesh,
                                                        Span<bool> selection,
                                                        float distance,
                                                        float depth,

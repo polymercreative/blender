@@ -43,7 +43,7 @@ std::optional<SkeletonInsetResult> mesh_skeleton_inset(const Mesh &mesh,
   }
 
   /* For now, just return a copy of the original mesh */
-  Mesh *result = BKE_mesh_copy_for_eval(mesh);
+  blender::Mesh *result = BKE_mesh_copy_for_eval(mesh);
 
   SkeletonInsetResult output;
   output.mesh = result;

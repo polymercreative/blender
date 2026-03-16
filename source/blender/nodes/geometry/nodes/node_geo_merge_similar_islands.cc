@@ -39,10 +39,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(ui::Layout &layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  layout->prop(ptr, "merge_mode", UI_ITEM_NONE, "", ICON_NONE);
-  layout->prop(ptr, "vector_mode", UI_ITEM_NONE, "", ICON_NONE);
+  layout.prop(ptr, "merge_mode", UI_ITEM_NONE, "", ICON_NONE);
+  layout.prop(ptr, "vector_mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)

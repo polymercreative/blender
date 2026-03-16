@@ -74,13 +74,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (!attributes.contains(remesh_mask_name)) {
     params.error_message_add(
         NodeWarningType::Info,
-        fmt::format(TIP_("Remesh mask attribute \"{}\" not found, remeshing entire mesh"),
+        fmt::format(fmt::runtime(TIP_("Remesh mask attribute \"{}\" not found, remeshing entire mesh")),
                     remesh_mask_name));
   }
   if (!attributes.contains(target_length_name)) {
     params.error_message_add(
         NodeWarningType::Info,
-        fmt::format(TIP_("Target edge length attribute \"{}\" not found, using default value 1.0"),
+        fmt::format(fmt::runtime(
+                        TIP_("Target edge length attribute \"{}\" not found, using default value 1.0")),
                     target_length_name));
   }
 

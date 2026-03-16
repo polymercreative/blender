@@ -104,7 +104,8 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_free_storage(bNode *node)
 {
   NodeGeometryBake &storage = node_storage(*node);
-  MEM_SAFE_FREE(storage.modifier_panel_button_name);
+  MEM_delete(storage.modifier_panel_button_name);
+  storage.modifier_panel_button_name = nullptr;
   socket_items::destruct_array<BakeItemsAccessor>(*node);
   MEM_delete(reinterpret_cast<NodeGeometryBake *>(node->storage));
 }
@@ -558,7 +559,7 @@ static const bNodeSocket *node_internally_linked_input(const bNodeTree & /*tree*
 static void node_blend_write(const bNodeTree & /*tree*/, const bNode &node, BlendWriter &writer)
 {
   const NodeGeometryBake &storage = node_storage(node);
-  BLO_write_string(&writer, storage.modifier_panel_button_name);
+  writer.write_string(storage.modifier_panel_button_name);
   socket_items::blend_write<BakeItemsAccessor>(&writer, node);
 }
 
