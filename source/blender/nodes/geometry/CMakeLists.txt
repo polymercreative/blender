@@ -29,10 +29,12 @@ set(INC_SYS
 
 set(SRC
   nodes/node_geo_accumulate_field.cc
+  nodes/node_geo_adaptive_remesh.cc
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
   nodes/node_geo_attribute_statistic.cc
   nodes/node_geo_bake.cc
+  nodes/node_geo_bevel.cc
   nodes/node_geo_blur_attribute.cc
   nodes/node_geo_bone_info.cc
   nodes/node_geo_boolean.cc
@@ -70,8 +72,10 @@ set(SRC
   nodes/node_geo_curve_topology_points_of_curve.cc
   nodes/node_geo_curve_trim.cc
   nodes/node_geo_curves_to_grease_pencil.cc
+  nodes/node_geo_decimate.cc
   nodes/node_geo_deform_curves_on_surface.cc
   nodes/node_geo_delete_geometry.cc
+  nodes/node_geo_dissolve_flat_vertices.cc
   nodes/node_geo_distribute_points_in_grid.cc
   nodes/node_geo_distribute_points_in_volume.cc
   nodes/node_geo_distribute_points_on_faces.cc
@@ -91,6 +95,7 @@ set(SRC
   nodes/node_geo_field_to_grid.cc
   nodes/node_geo_field_to_list.cc
   nodes/node_geo_field_variance.cc
+  nodes/node_geo_fix_poles.cc
   nodes/node_geo_flip_faces.cc
   nodes/node_geo_foreach_geometry_element.cc
   nodes/node_geo_geometry_to_instance.cc
@@ -101,6 +106,7 @@ set(SRC
   nodes/node_geo_gizmo_linear.cc
   nodes/node_geo_gizmo_transform.cc
   nodes/node_geo_grease_pencil_to_curves.cc
+  nodes/node_geo_hard_bevel.cc
   nodes/node_geo_grid_advect.cc
   nodes/node_geo_grid_clip.cc
   nodes/node_geo_grid_curl.cc
@@ -126,6 +132,7 @@ set(SRC
   nodes/node_geo_import_vdb.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
+  nodes/node_geo_inset.cc
   nodes/node_geo_input_active_camera.cc
   nodes/node_geo_input_collection.cc
   nodes/node_geo_input_curve_handles.cc
@@ -174,6 +181,8 @@ set(SRC
   nodes/node_geo_menu_switch.cc
   nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_merge_layers.cc
+  nodes/node_geo_merge_similar_islands.cc
+  nodes/node_geo_merge_small_islands.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
   nodes/node_geo_mesh_primitive_cone.cc
@@ -226,6 +235,7 @@ set(SRC
   nodes/node_geo_sdf_grid_mean_curvature.cc
   nodes/node_geo_sdf_grid_median.cc
   nodes/node_geo_sdf_grid_offset.cc
+  nodes/node_geo_select_bad_triangles.cc
   nodes/node_geo_self_object.cc
   nodes/node_geo_separate_bundle.cc
   nodes/node_geo_separate_components.cc
@@ -251,7 +261,9 @@ set(SRC
   nodes/node_geo_set_shade_smooth.cc
   nodes/node_geo_set_spline_cyclic.cc
   nodes/node_geo_set_spline_resolution.cc
+  nodes/node_geo_shrinkwrap.cc
   nodes/node_geo_simulation.cc
+  nodes/node_geo_skeleton_inset.cc
   nodes/node_geo_sort_elements.cc
   nodes/node_geo_split_to_instances.cc
   nodes/node_geo_store_bundle_item.cc
