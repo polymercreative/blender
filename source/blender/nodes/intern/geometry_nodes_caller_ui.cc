@@ -43,6 +43,8 @@
 #include "UI_interface_layout.hh"
 #include "UI_resources.hh"
 
+#include "WM_api.hh"
+
 #include "intern/MOD_ui_common.hh"
 
 namespace blender::nodes {
@@ -939,7 +941,7 @@ static void draw_bake_panel(ui::Layout &layout, PointerRNA *modifier_ptr)
   bool has_visible_bakes = false;
   for (const NodesModifierBake &bake : Span(nmd.bakes, nmd.bakes_num)) {
     const bNode *node = nmd.node_group->find_nested_node(bake.id, nullptr);
-    if (!node || node->type_legacy != GEO_NODE_BAKE) {
+    if (!node || node->type_legacy != GEO_NODE_BAKE || node->storage == nullptr) {
       continue;
     }
 
@@ -967,7 +969,7 @@ static void draw_bake_panel(ui::Layout &layout, PointerRNA *modifier_ptr)
     RNA_string_set(&bake_op_ptr, "modifier_name", nmd.modifier.name);
     RNA_int_set(&bake_op_ptr, "bake_id", bake.id);
 
-    if (bake.packed) {
+    if (bake.bake_size > 0) {
       PointerRNA delete_op_ptr = row.op("OBJECT_OT_geometry_node_bake_delete_single",
                                         "",
                                         ICON_TRASH,
