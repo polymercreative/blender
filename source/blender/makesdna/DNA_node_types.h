@@ -1381,7 +1381,7 @@ struct bNodeStack {
   short is_copy = 0;
   /** Data is used by external nodes (no freeing). */
   short external = 0;
-  char _pad[4] = {};
+  char _pad0[4] = {};
 };
 
 struct bNodeSocket {
@@ -3862,6 +3862,11 @@ struct NodeGeometryBake {
   int next_identifier = 0;
   int active_index = 0;
   char _pad[4] = {};
+  /** Custom name for the bake button in the modifier panel. */
+  char *modifier_panel_button_name = nullptr;
+  /** If true, show a bake button for this node in the modifier panel. */
+  uint8_t show_in_modifier_panel = false;
+  char _pad1[7] = {};
 };
 
 struct NodeGeometryDecimate {

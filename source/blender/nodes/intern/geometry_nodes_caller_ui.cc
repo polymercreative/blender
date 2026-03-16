@@ -12,6 +12,7 @@
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
+#include "BKE_node_legacy_types.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_screen.hh"
 
@@ -21,6 +22,7 @@
 #include "BLT_translation.hh"
 
 #include "DNA_modifier_types.h"
+#include "DNA_node_types.h"
 #include "DNA_node_tree_interface_types.h"
 
 #include "ED_node.hh"
@@ -921,11 +923,61 @@ static void draw_output_attributes_panel(DrawGroupInputsContext &ctx, ui::Layout
 
 static void draw_bake_panel(ui::Layout &layout, PointerRNA *modifier_ptr)
 {
+  NodesModifierData &nmd = *modifier_ptr->data_as<NodesModifierData>();
+  Object &object = *reinterpret_cast<Object *>(modifier_ptr->owner_id);
+
   ui::Layout &col = layout.column(false);
   col.use_property_split_set(true);
   col.use_property_decorate_set(false);
   col.prop(modifier_ptr, "bake_target", UI_ITEM_NONE, std::nullopt, ICON_NONE);
   col.prop(modifier_ptr, "bake_directory", UI_ITEM_NONE, IFACE_("Bake Path"), ICON_NONE);
+
+  if (!(nmd.node_group && nmd.bakes_num > 0)) {
+    return;
+  }
+
+  bool has_visible_bakes = false;
+  for (const NodesModifierBake &bake : Span(nmd.bakes, nmd.bakes_num)) {
+    const bNode *node = nmd.node_group->find_nested_node(bake.id, nullptr);
+    if (!node || node->type_legacy != GEO_NODE_BAKE) {
+      continue;
+    }
+
+    const NodeGeometryBake &bake_storage = *static_cast<const NodeGeometryBake *>(node->storage);
+    if (!bake_storage.show_in_modifier_panel) {
+      continue;
+    }
+
+    if (!has_visible_bakes) {
+      layout.separator();
+      has_visible_bakes = true;
+    }
+
+    ui::Layout &row = layout.row(true);
+    const char *button_name = bake_storage.modifier_panel_button_name &&
+                                      bake_storage.modifier_panel_button_name[0] != '\0' ?
+                                  bake_storage.modifier_panel_button_name :
+                                  node->name;
+    PointerRNA bake_op_ptr = row.op("OBJECT_OT_geometry_node_bake_single",
+                                    button_name,
+                                    ICON_NONE,
+                                    wm::OpCallContext::InvokeDefault,
+                                    UI_ITEM_NONE);
+    WM_operator_properties_id_lookup_set_from_id(&bake_op_ptr, &object.id);
+    RNA_string_set(&bake_op_ptr, "modifier_name", nmd.modifier.name);
+    RNA_int_set(&bake_op_ptr, "bake_id", bake.id);
+
+    if (bake.packed) {
+      PointerRNA delete_op_ptr = row.op("OBJECT_OT_geometry_node_bake_delete_single",
+                                        "",
+                                        ICON_TRASH,
+                                        wm::OpCallContext::InvokeDefault,
+                                        UI_ITEM_NONE);
+      WM_operator_properties_id_lookup_set_from_id(&delete_op_ptr, &object.id);
+      RNA_string_set(&delete_op_ptr, "modifier_name", nmd.modifier.name);
+      RNA_int_set(&delete_op_ptr, "bake_id", bake.id);
+    }
+  }
 }
 
 static void draw_named_attributes_panel(ui::Layout &layout, Object &object, NodesModifierData &nmd)
