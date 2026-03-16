@@ -4,8 +4,16 @@ linking to external resources instead of including content in-line.
 See 'release/text/readme.html' for the end user read-me.
 -->
 
-Blender
-=======
+Blender (Polymer Fork)
+======================
+
+This is Polymer's working Blender fork for project-specific workflow support.
+
+Current focus:
+
+- extending Geometry Nodes and related modeling tools for custom procedural workflows
+- adding modifier and editor support that helps our projects move faster
+- keeping a practical fork that can be merged forward from upstream without carrying unnecessary baggage
 
 Blender is the free and open source 3D creation suite.
 It supports the entirety of the 3D pipeline—modeling, rigging, animation, simulation, rendering, compositing,
